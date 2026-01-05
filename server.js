@@ -1,7 +1,6 @@
 const express = require("express");
 const session = require("express-session");
 const speakeasy = require("speakeasy");
-const bcrypt = require("bcrypt");
 const cors = require("cors");
 
 const app = express();
@@ -18,40 +17,64 @@ app.use(session({
   saveUninitialized: false
 }));
 
+/* 👤 BAZA UŻYTKOWNIKÓW */
 const users = {
-  pioxi: {
-    login: "prezydent",
-    password: bcrypt.hashSync("haslo123", 10),
-    twofa: "JBSWY3DPEHPK3PXP"
+  pioxi_minecraft: {
+    login: "P180911",
+    twofa: "JBSWY3DPEHPK3PXP"  // 16 znaków, poprawne Base32
+  },
+  sokowypanek: {
+    login: "F230411",
+    twofa: "KZXW6YTBOIYQ2L6P"  // rozszerzony do 16 znaków Base32
+  },
+  BurgerJami: {
+    login: "N181011",
+    twofa: "MFRGGZDFMZTWQ2LK"  // już było poprawne
+  },
+  KATIKOT111: {
+    login: "A101111",
+    twofa: "NB2CFEJSOQW2R7LX"  // zmieniony, 16 znaków Base32, bez kropki
+  },
+  Juliksonxd: {
+    login: "J181211",
+    twofa: "ONSWG4TFOQXW2L7K"  // rozszerzony do 16 znaków Base32
+  },
+  anyanax: {
+    login: "Z281211",
+    twofa: "KRUGS4TFOIYQ2L6N"  // rozszerzony do 16 znaków Base32
   }
 };
 
-app.post("/login", async (req, res) => {
-  const { nick, login, password, token } = req.body;
+
+/* 🔐 LOGOWANIE */
+app.post("/login", (req, res) => {
+  const { nick, login, token } = req.body;
   const user = users[nick];
 
-  if (!user || user.login !== login)
-    return res.status(401).end();
-
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(401).end();
+  if (!user || user.login !== login) {
+    return res.status(401).json({ error: "BAD_LOGIN" });
+  }
 
   const verified = speakeasy.totp.verify({
     secret: user.twofa,
     encoding: "base32",
-    token
+    token,
+    window: 1
   });
 
-  if (!verified) return res.status(401).end();
+  if (!verified) {
+    return res.status(401).json({ error: "BAD_2FA" });
+  }
 
   req.session.user = nick;
   res.json({ ok: true });
 });
 
+/* 👤 SPRAWDZENIE SESJI */
 app.get("/me", (req, res) => {
   if (!req.session.user) return res.status(401).end();
   res.json({ user: req.session.user });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("OK"));
+app.listen(PORT, () => console.log("OK – Pioxburg Auth działa"));
